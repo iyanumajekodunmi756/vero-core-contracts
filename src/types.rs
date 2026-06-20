@@ -1,4 +1,6 @@
-use soroban_sdk::{contracterror, contracttype, Address, Map};
+use soroban_sdk::{contracterror, contracttype, Address, BytesN, Map};
+
+pub use crate::contracts::storage_layout::DataKey;
 
 #[contracttype]
 #[derive(Clone)]
@@ -72,6 +74,16 @@ pub enum BatchCall {
     Unpause(Address),
     RecordFailure(Address),
     ResetCircuitBreaker(Address),
+    /// Set multi-sig upgrade signers and threshold.
+    SetUpgradeSigners(Address, soroban_sdk::Vec<Address>, u32),
+    /// Propose a new upgrade WASM hash.
+    ProposeUpgrade(Address, BytesN<32>),
+    /// Approve a pending upgrade.
+    ApproveUpgrade(Address),
+    /// Execute the upgrade once threshold is met.
+    ExecuteUpgrade(Address),
+    /// Cancel a pending upgrade.
+    CancelUpgrade(Address),
 }
 
 /// Every public write operation exposed by VeroContract.
@@ -91,12 +103,44 @@ pub enum Operation {
     RecordFailure = 10,
     ResetCircuitBreaker = 11,
     UpgradeContract = 12,
-    /// `record_snapshot` — records a state snapshot.
     RecordSnapshot = 13,
-    /// `purge_task` — removes a terminal task from storage.
     PurgeTask = 14,
     /// `vote_batch` — vote on multiple tasks in one transaction.
     VoteBatch = 15,
+    /// `set_upgrade_signers` — configure multi-sig upgrade signers.
+    SetUpgradeSigners = 16,
+    /// `propose_upgrade` — propose a new upgrade WASM hash.
+    ProposeUpgrade = 17,
+    /// `approve_upgrade` — approve a pending upgrade.
+    ApproveUpgrade = 18,
+    /// `execute_upgrade` — execute upgrade once threshold met.
+    ExecuteUpgrade = 19,
+    /// `cancel_upgrade` — cancel a pending upgrade.
+    CancelUpgrade = 20,
+}
+
+/// Batch call variants for the `batch_execute` entry point.
+#[contracttype]
+#[derive(Clone)]
+pub enum BatchCall {
+    RegisterTask(Address, u64),
+    CancelTask(Address, u64),
+    Vote(Address, u64),
+    AddGuardian(Address, Address),
+    RemoveGuardian(Address, Address),
+    SetReputation(Address, Address, u64),
+    LockTokens(Address, i128),
+    RequestUnlock(Address),
+    UnlockTokens(Address),
+    ResignGuardian(Address),
+    SetWeightThreshold(Address, u64),
+    SetVaultAddress(Address, Address),
+    StartRewardStream(Address, Address, Address, u64),
+    TogglePause(Address),
+    Pause(Address),
+    Unpause(Address),
+    RecordFailure(Address),
+    ResetCircuitBreaker(Address),
 }
 
 #[contracterror]
@@ -129,8 +173,21 @@ pub enum ContractError {
     TaskNotStale = 25,
     SnapshotNotFound = 26,
     WithdrawalTimelockActive = 27,
+    TaskNotTerminal = 28,
+    InsufficientReputation = 29,
+}
     /// Task is still active (not done and not cancelled) and cannot be purged.
     TaskNotTerminal = 28,
     /// Guardian's reputation score is below the minimum threshold to vote.
     InsufficientReputation = 29,
+    /// Caller is not authorized as a multi-sig upgrade signer.
+    NotUpgradeSigner = 30,
+    /// Not enough upgrade approvals collected yet.
+    UpgradeThresholdNotMet = 31,
+    /// No pending upgrade proposal to act on.
+    NoPendingUpgrade = 32,
+    /// Signer has already approved this upgrade proposal.
+    AlreadyApproved = 33,
+    /// Invalid multi-sig upgrade configuration (threshold > signers or zero).
+    InvalidUpgradeConfig = 34,
 }
